@@ -113,6 +113,12 @@ class Event < ApplicationRecord
         [Event.exception_types[:delete_only],
         Event.exception_types[:delete_all_follow]], exception_time
     end
+
+    def events_of_parent parent_id, start_date
+      where "parent_id = ? AND end_repeat > ? AND exception_type NOT IN (?)",
+        parent_id, start_date, [Event.exception_types[:delete_only],
+        Event.exception_types[:delete_all_follow]]
+    end
   end
 
   Event.repeat_types.keys.each do |repeat_type|

@@ -12,8 +12,18 @@ module Events
         handle_event_delete_only_and_old_exception_type start_date, end_repeat
         begin
           ActiveRecord::Base.transaction do
-            update_event_exception_pre_nearest
-            @event = duplicate_event if is_allow_duplicate_event?
+            if @event.end_repeat != end_repeat || start_repeat != start_date
+              update_event_exception_pre_nearest
+              @event = duplicate_event if is_allow_duplicate_event?
+            else
+              events_after = Event.events_of_parent(@event.id, event_params[:start_date])
+              @event = duplicate_event if is_allow_duplicate_event?
+              event_params[:start_repeat] = @event.start_repeat
+              event_params[:end_repeat] = @event.end_repeat
+            end
+            if events_after.count > 0
+              update_exception_type events_after, Event.exception_types[:delete_only]
+            end
             @event.update_attributes! event_params
           end
         rescue ActiveRecord::RecordInvalid => exception
@@ -80,8 +90,18 @@ module Events
         event_params[:start_date]
       end
 
+      def start_repeat
+        event_params[:start_repeat]
+      end
+
       def end_repeat
         event_params[:end_repeat]
+      end
+
+      def update_exception_type events, exception_type
+        events.each do |event|
+          event.update_attributes(exception_type: exception_type)
+        end
       end
     end
   end
